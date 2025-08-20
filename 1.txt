@@ -1,1 +1,5 @@
-testx
+User-agent: *
+Disallow: /shop/part_search?*article=
+Disallow: /shop
+Disallow: /parts
+Disallow: /xstage
