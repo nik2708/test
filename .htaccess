@@ -1,0 +1,37 @@
+php_value default_charset utf-8
+AddType 'text/html; charset=utf-8' .html .htm .shtml
+
+
+#Убираем / в конце URL
+RewriteEngine On
+RewriteBase /
+RewriteCond %{HTTP_HOST} (.*)
+RewriteCond %{REQUEST_URI} /$ [NC]
+RewriteRule ^(.*)(/)$ $1 [L,R=301]
+
+RewriteCond %{REQUEST_URI} ^/glavnaya$
+RewriteRule ^.*$ http://zapchast.tw1.ru/? [R=301,L]
+RewriteCond %{QUERY_STRING} ^car_id=17&car_name=Hyundai$ [NC]
+RewriteRule (.*) http://запчасть.su/hyundai/? [R=301,L]
+
+Redirect 301 /shop/katalogi-ucats/katalog-texnicheskogo-obsluzhivaniya /shop/katalogi-ucats/avtozapchasti-dlja-to
+
+RewriteCond %{QUERY_STRING} ^car_id=21&car_name=Kia$ [NC]
+RewriteRule (.*) http://запчасть.su/kia/? [R=301,L]
+
+RewriteCond %{QUERY_STRING} ^car_id=11&car_name=Ford$ [NC]
+RewriteRule (.*) http://запчасть.su/ford/? [R=301,L]
+
+RewriteCond %{QUERY_STRING} ^car_id=51&car_name=Ford$ [NC]
+RewriteRule (.*) http://запчасть.su/ford-transit/? [R=301,L]
+
+#Включаем модуль mod_rewrite
+RewriteEngine On
+
+
+#Переадресация на адрес без www, как наиболее актуальный
+RewriteCond %{HTTP_HOST} ^www\.xn--80aat7alg6a6b\.su$ [NC]
+RewriteRule ^(.*)$ http://zapchast.tw1.ru/$1 [R=301,L]
+#Переадресация на единую точку входа (index.php в корне сайта)
+RewriteCond %{SCRIPT_FILENAME} !-f
+RewriteRule (.*) index.php
