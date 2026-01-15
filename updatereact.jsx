@@ -5,7 +5,7 @@ const WelcomePage = () => {
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 flex flex-col items-center justify-center p-4 text-white">
       <div className="text-center animate-fade-in">
         <h1 className="text-6xl md:text-8xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-cyan-300 to-pink-300 drop-shadow-lg">
-          Привет
+          На вашем сайте есть уязвимость, если интерисует помощь в ее устранении свяжитесь со мной в телеграм.
         </h1>
         
         <div className="flex items-center justify-center mt-6 group">
@@ -13,12 +13,12 @@ const WelcomePage = () => {
           <p className="text-xl md:text-2xl font-medium bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20 hover:border-cyan-300 transition-all duration-300">
             Контакт для связи Telegram: 
             <a 
-              href="https://t.me/mihail" 
+              href="https://t.me/mihailpentest" 
               target="_blank" 
               rel="noopener noreferrer"
               className="ml-1 font-bold text-cyan-300 hover:text-cyan-100 transition-colors underline decoration-dotted"
             >
-              @mihail
+              @mihailpentest
             </a>
           </p>
         </div>
